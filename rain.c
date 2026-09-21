@@ -25,10 +25,10 @@ static struct timespec next;
 void on_sigint(int sig);
 void init_frame(void);
 void sleep_frame(long frame_ns);
-void init_drops(struct drop (*p)[]);
-void update_drops(struct drop (*p)[]);
+void init_drops(struct drop *p);
+void update_drops(struct drop *p);
 void render(char *buf);
-void draw(struct drop (*p)[COL] , char *buf);
+void draw(struct drop *p , char *buf);
 
 int main() {
   srand(time(NULL));
@@ -42,11 +42,11 @@ int main() {
   
   write(1, START, strlen(START));
   init_frame();
-  init_drops(&drops);
+  init_drops(drops);
 
   for (;;) {
-    update_drops(&drops);
-    draw(&drops, buf);
+    update_drops(drops);
+    draw(drops, buf);
     render(buf);
     sleep_frame(BILLION/10);
   }
@@ -54,17 +54,18 @@ int main() {
   return 0;
 }
 
-void draw(struct drop (*p)[COL] , char *buf) {
+void draw(struct drop *p , char *buf) {
   const char tail_char[] = TAIL_CHAR; //eg: @0o+|.  len=7
   for (int i = 0; i < ROW*COL; i++) {
     buf[i] = ' ';
   }
   for (int i = 0; i < COL; i++) {
       for (int t = 0; t <= TAIL; t++) {
+          if (p[i].head.y - t < 0 || p[i].head.y >= ROW) continue;
           if (t > strlen(tail_char) - 2) {
-          AT(buf, (*p)[i].head.y - t, (*p)[i].head.x) = '.';
+          AT(buf, p[i].head.y - t, p[i].head.x) = '.';
         } else {
-          AT(buf, (*p)[i].head.y - t, (*p)[i].head.x) = tail_char[t];
+          AT(buf, p[i].head.y - t, p[i].head.x) = tail_char[t];
         }
       }
   }
@@ -93,22 +94,23 @@ void on_sigint(int sig) {
   _exit(0);
 }
 
-void init_drops(struct drop (*p)[]) {
+void init_drops(struct drop *p) {
   for (int i = 0; i < COL; i++) {
-    (*p)[i].head.x = i;
-    (*p)[i].head.y = rand() % (ROW/2);
-    (*p)[i].tail = TAIL;
+    p[i].head.x = i;
+    p[i].head.y = rand() % (ROW/2);
+    p[i].tail = TAIL;
   }
 }
-void update_drops(struct drop (*p)[]) {
+
+void update_drops(struct drop *p) {
   for (int i = 0; i < COL; i++) {
-    if ((*p)[i].head.y == ROW && (*p)[i].tail == 0) {
-      (*p)[i].head.y = rand() % (ROW/2);
-      (*p)[i].tail = TAIL;
-    } else if ((*p)[i].head.y == ROW) {
-      (*p)[i].tail -= 1;
+    if (p[i].head.y == ROW && p[i].tail == 0) {
+      p[i].head.y = rand() % (ROW/2);
+      p[i].tail = TAIL;
+    } else if (p[i].head.y == ROW) {
+      p[i].tail -= 1;
     } else {
-      (*p)[i].head.y += 1;
+      p[i].head.y += 1;
     }
   }
 }
